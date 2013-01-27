@@ -1,0 +1,19 @@
+{
+	"name": "umlol",
+	"version": "0.0.1",
+	"description": "Collaborate diagramming and wireframing",
+	"homepage": "https://github.com/steveorsomethin/umlol",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/steveorsomethin/umlol"
+	},
+	"author": {
+			"name": "Steve McGuire",
+			"url": "https://github.com/steveorsomethin"
+	},
+	"devDependencies": {
+		"express": "2.x.x",
+		"share": "0.x.x",
+		"redis": "0.x.x"
+	}
+}

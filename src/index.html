@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Collaborative diagramming</title>
+		<style>
+			body {
+				font: 13px sans-serif;
+				position: relative;
+				width: 960px;
+				height: 500px;
+			}
+
+			.line {
+				fill: none;
+				stroke: steelblue;
+				stroke-width: 1.5px;
+			}
+
+			.selected {
+				fill: #ff7f0e;
+				stroke: #ff7f0e;
+			}
+		</style>
+
+		<script src="./deps/jquery.js"></script>
+		<script src="./deps/d3.v3.js"></script>
+		<script src="./deps/underscore.js"></script>
+		<script src="./deps/backbone.js"></script>
+		<script src="/channel/bcsocket.js"></script>
+		<script src="/share/share.uncompressed.js"></script>
+		<script src="/share/json.uncompressed.js"></script>
+		<script src="./deps/diff_match_patch.js"></script>
+		<script src="./deps/backbone-share.js"></script>
+
+		<script src="./application.js"></script>
+		<script src="./commandMap.js"></script>
+		<script src="./commands.js"></script>
+		<script src="./models.js"></script>
+		<script src="./views.js"></script>
+		<script src="./entrypoint.js"></script>
+	</head>
+	<body>
+	</body>
+</html>
