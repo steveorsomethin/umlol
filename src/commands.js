@@ -139,8 +139,24 @@
 		}
 	});
 
+	var AppCommands = exports.AppCommands = this.Core.CommandMap.extend({
+		events: {
+			'undo': 'undo',
+			'redo': 'redo'
+		},
+
+		undo: function() {
+			context.workspace.undo();
+		},
+
+		redo: function() {
+			context.workspace.redo();
+		}
+	});
+
 	//No telling when the GC might try to reclaim these if they aren't attached to something
 	this.Commands.ShapeInstance = new ShapeCommands(dispatcher);
 	this.Commands.WorkspaceInstance = new WorkspaceCommands(dispatcher);
+	this.Commands.AppInstance = new AppCommands(dispatcher);
 
 }).call(App, async, Backbone);
