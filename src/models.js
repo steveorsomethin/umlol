@@ -1,4 +1,4 @@
-(function(Backbone) {
+(function(_, Backbone) {
 	var exports = this.Models = {};
 
 	var imagePaths = {
@@ -100,11 +100,37 @@
 		model: Link
 	});
 
+	var Workspace = exports.Workspace = Backbone.SharedModel.extend({
+		subDocTypes: {
+			shapes: ShapeCollection,
+			lines: LineCollection,
+			links: LinkCollection
+		},
+
+		defaults: function() {
+			return {
+				shapes: new ShapeCollection(),
+				lines: new LineCollection(),
+				links: new LinkCollection()
+			};
+		}
+	});
+
+	var Selection = exports.Selection = Backbone.SharedModel.extend({
+		defaults: {
+			userId: '',
+			selectedId: ''
+		}
+	});
+
+	var SelectionCollection = exports.SelectionCollection = Backbone.SharedCollection.extend({
+		model: Selection
+	});
+
 	var User = exports.User = Backbone.SharedModel.extend({
 		defaults: {
 			name: '',
-			color: '',
-			selection: ''
+			color: ''
 		}
 	});
 
@@ -112,21 +138,54 @@
 		model: User
 	});
 
-	var Workspace = exports.Workspace = Backbone.SharedModel.extend({
+	var WorkspaceMetadata = exports.WorkspaceMetadata = Backbone.SharedModel.extend({
 		subDocTypes: {
-			shapes: ShapeCollection,
-			lines: LineCollection,
-			links: LinkCollection,
-			users: UserCollection
+			users: UserCollection,
+			selections: SelectionCollection
 		},
 
 		defaults: function() {
 			return {
-				shapes: new ShapeCollection(),
-				lines: new LineCollection(),
-				links: new LinkCollection(),
-				users: new UserCollection()
+				users: new UserCollection(),
+				selections: new SelectionCollection()
 			};
+		},
+
+		getUser: function(userId) {
+			return this.get('users').filter(function(user) {
+				return user.get('id') === userId;
+			})[0];
+		},
+
+		getSelectionsByUser: function(userId) {
+			return this.get('selections').filter(function(selection) {
+				return selection.get('userId') === userId;
+			});
+		},
+
+		getUsersBySelected: function(selectedId) {
+			var self = this;
+			var results = [];
+
+			//This isn't optimal, but until it becomes a perf issue it shall remain this way
+			this.get('selections').forEach(function(selection) {
+				if (selection.get('selectedId') === selectedId) {
+					self.get('users').forEach(function(user) {
+						if (selection.get('userId') === user.get('id')) {
+							results.push(user);
+						}
+					});
+				}
+			});
+
+			return results;
+		},
+
+		getColorsForSelected: function(selectedId) {
+			return this.getUsersBySelected.map(function(user) {
+				return user.get('color');
+			});
 		}
 	});
-}).call(App, Backbone);
+
+}).call(App, _, Backbone);
