@@ -16,16 +16,17 @@
 
 			this.setElement(svg.node());
 
-			this.bindModel();
+			this.bindModelEvents();
+			this.render();
 		},
 
-		bindModel: function() {
+		bindModelEvents: function() {
 			var self = this;
 
 			self.stopListening();
 
 			this.listenTo(this.model, 'change:shapes change:lines', function() {
-				self.bindModel();
+				self.bindModelEvents();
 				self.render();
 			});
 
@@ -54,6 +55,7 @@
 	});
 
 	var ShapeView = exports.ShapeView = Backbone.View.extend({
+		//Delegating to the workspace view might be preferable, but svg doesn't mix with jQuery delegation
 		events: {
 			'mousedown': 'onMouseDown'
 		},
@@ -66,42 +68,83 @@
 				.on('drag', this.onDrag.bind(this))
 				.on('dragend', this.onDragEnd.bind(this));
 
-			d3.select(this.el).call(drag);
+			d3.select(this.el).attr('class', 'shape').call(drag);
 
-			this.model.on('change', this.render.bind(this));
+			this.strokeColors = [];
+			this.bindModelEvents();
+			this.render();
+		},
+
+		bindModelEvents: function() {
+			var self = this;
+
+			this.stopListening();
+
+			this.listenTo(context.metadata, 'change', function() {
+				self.bindModelEvents();
+				self.render();
+			});
+
+			this.listenTo(this.model, 'change', this.render.bind(this));
+			this.listenTo(context.metadata.get('selections'), 'add', this.selectionAdded.bind(this));
+			this.listenTo(context.metadata.get('selections'), 'remove', this.selectionRemoved.bind(this));
+		},
+
+		selectionAdded: function(selection) {
+			if (selection.get('selectedId') === this.model.get('id')) {
+				var user = context.metadata.getUser(selection.get('userId')),
+					color = user.get('color');
+
+				if (this.strokeColors.indexOf(color) === -1) {
+					this.strokeColors.push(color);
+				}
+			}
+
+			this.render();
+		},
+
+		selectionRemoved: function(selection) {
+			if (selection.get('selectedId') === this.model.get('id')) {
+				var user = context.metadata.getUser(selection.get('userId')),
+					color = user.get('color');
+
+				this.strokeColors.splice(this.strokeColors.indexOf(color), 1);
+			}
 
 			this.render();
 		},
 
 		render: function() {
-			var x = (this.drag ? this.drag.x : this.model.get('x')).toString(),
-				y = (this.drag ? this.drag.y : this.model.get('y')).toString(),
-				transform = ['translate(', x, ' ', y, ')'].join('');
+			var x = (this.dragState ? this.dragState.x : this.model.get('x')).toString(),
+				y = (this.dragState ? this.dragState.y : this.model.get('y')).toString(),
+				transform = ['translate(', x, ' ', y, ')'].join(''),
+				selectionInfo = this.model.get('selectionInfo');
 
 			d3.select(this.el)
-				.attr('stroke', this.model.get('stroke'))
+				.attr('class', 'shape')
+				.attr('stroke', this.strokeColors.length ? this.strokeColors[0] : this.model.get('stroke'))
 				.attr('fill', this.model.get('fill'))
 				.attr('transform', transform)
 				.attr('d', this.model.get('svgPath'));
 		},
 
 		onDragStart: function() {
-			this.drag = {x: this.model.get('x'), y: this.model.get('y')};
+			this.dragState = {x: this.model.get('x'), y: this.model.get('y')};
 		},
 
 		onDrag: function() {
-			this.drag.x += d3.event.dx;
-			this.drag.y += d3.event.dy;
+			this.dragState.x += d3.event.dx;
+			this.dragState.y += d3.event.dy;
 			this.render();
 		},
 
 		onDragEnd: function() {
-			this.model.set({x: this.drag.x, y: this.drag.y});
-			this.drag = null;
+			this.model.set({x: this.dragState.x, y: this.dragState.y});
+			this.dragState = null;
 		},
 
 		onMouseDown: function() {
-			dispatcher.trigger('selectShape', this.model);
+			dispatcher.trigger('shape:select', {shapes: [this.model]});
 		}
 	});
 
