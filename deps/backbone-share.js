@@ -139,10 +139,6 @@
 			op,
 			i;
 
-		if (this.lastOps === ops) return;
-		
-		this.lastOps = ops;
-
 		for (i = 0; i < ops.length; i++) {
 			op = ops[i];
 			if (op.si || op.sd) {
@@ -162,14 +158,35 @@
 	};
 
 	_.extend(UndoContext.prototype, {
-		pushOps: function(ops) {
-			if (this.stack.length && this.index !== this.stack.length - 1) {
-				this.stack = this.stack.slice(0, Math.max(0, this.index + 1));
-				this.index = this.stack.length - 1;
-			}
+		group: function(contextFunc) {
+			var groupedOps = this.groupedOps = [];
 
-			this.stack.push(ops);
-			this.index++;
+			contextFunc.call();
+
+			this.groupedOps = null;
+			this.pushOps(groupedOps);
+		},
+
+		prevent: function(contextFunc) {
+			this.preventUndo = true;
+
+			contextFunc.call();
+
+			this.preventUndo = false;
+		},
+
+		pushOps: function(ops) {
+			if (this.groupedOps) {
+				Array.prototype.push.apply(this.groupedOps, ops);
+			} else if (!this.preventUndo) {
+				if (this.stack.length && this.index !== this.stack.length - 1) {
+					this.stack = this.stack.slice(0, Math.max(0, this.index + 1));
+					this.index = this.stack.length - 1;
+				}
+
+				this.stack.push(ops);
+				this.index++;
+			}
 		},
 
 		undo: function(model) {
@@ -182,7 +199,7 @@
 		},
 
 		redo: function(model) {
-			if (this.stack.length) {
+			if (this.stack.length && this.index < this.stack.length - 1) {
 				this._undoRedo(model, this.stack[++this.index]);
 			}
 		},
@@ -254,18 +271,37 @@
 				this.parent.unshare();
 			}
 			
-			this.shareDoc.removeListener('remoteop', this._onRemoteOp);
+			if (this._onRemoteOp) {
+				Object.getPrototypeOf(this.shareDoc).removeListener
+					.call(this.shareDoc, 'remoteop', this._onRemoteOp);
+			}
 			this.shareDoc = null;
 		},
 
+		groupUndoOps: function(contextFunc) {
+			this.undoContext.group(contextFunc.bind(this));
+
+			return this;
+		},
+
+		preventUndo: function(contextFunc) {
+			this.undoContext.prevent(contextFunc.bind(this));
+
+			return this;
+		},
+
 		undo: function() {
-			this.undoContext.undo(this);
+			if (this.shareDoc) {
+				this.undoContext.undo(this);
+			}
 
 			return this;
 		},
 
 		redo: function() {
-			this.undoContext.redo(this);
+			if (this.shareDoc) {
+				this.undoContext.redo(this);
+			}
 
 			return this;
 		},
@@ -302,9 +338,13 @@
 
 			//Prevent redundant bindings
 			if (this._onRemoteOp) {
-				shareDoc.removeListener(this._onRemoteOp);
+				//TODO: Find a way around this minor wtf
+				Object.getPrototypeOf(shareDoc).removeListener.call(shareDoc, 'remoteop', this._onRemoteOp);
+			} else {
+				this._onRemoteOp = onRemoteOp.bind(this);
 			}
-			this._onRemoteOp = shareDoc.on('remoteop', onRemoteOp.bind(this));
+
+			shareDoc.on('remoteop', this._onRemoteOp);
 
 			this.trigger('share:connected', this.shareDoc);
 		},
@@ -534,13 +574,13 @@
 				}
 			});
 
-			if (!options || (!options.undo && !options.silent)) {
-				this.undoContext.pushOps(ops);
-			}
-
 			if (this.shareDoc) {
 				Backbone.ShareLogger.log('Sending:', ops);
 				this.shareDoc.submitOp(ops, this._submitHandler);
+
+				if (!options || (!options.undo && !options.silent)) {
+					this.undoContext.pushOps(ops);
+				}
 			} else {
 				console.log('Not connected, ignoring ', ops);
 			}
@@ -643,7 +683,7 @@
 		},
 
 		remove: function(models, options) {
-			var ops;
+			var ops, self = this;
 			models =  models = _.isArray(models) ? models.slice() : [models];
 
 			if (!options || (!options.local  && !options.silent)) {
@@ -655,6 +695,8 @@
 			}
 
 			_.each(models, function(model) {
+				if (self.indexOf(model) === -1) return;
+
 				model._setParent(null);
 			});
 
@@ -698,7 +740,10 @@
 
 		_prepareListChanges: function(models, type) {
 			var self = this;
-			var ops = _.map(models, function(model) {
+			var ops = [];
+			_.each(models, function(model) {
+				if (self.indexOf(model) === -1) return;
+
 				var op = {
 					p: self.documentPath.concat([self.indexOf(model)])
 				}
@@ -714,7 +759,7 @@
 						throw new Error('Unrecognized list operation type: ' + type);
 				}
 
-				return op;
+				ops.push(op);
 			});
 
 			//Work backwards so that ld operations don't corrupt the snapshot due to splicing
@@ -731,12 +776,12 @@
 			if (this.shareDoc) {
 				Backbone.ShareLogger.log('Sending:', ops);
 				this.shareDoc.submitOp(ops, callback);
+
+				if (!options|| (!options.undo && !options.silent)) {
+					this.undoContext.pushOps(ops);
+				}
 			} else {
 				console.log('Not connected, ignoring ', ops);
-			}
-
-			if (!options || !options.undo) {
-				this.undoContext.pushOps(ops);
 			}
 		},
 
