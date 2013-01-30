@@ -1,10 +1,10 @@
 window.App = {};
 
 (function(_, Backbone) {
-	var dispatcher = {};
-	_.extend(dispatcher, Backbone.Events);
 
-	var context = {};
+	var dispatcher = {}, context = {};
+	
+	_.extend(dispatcher, Backbone.Events);
 
 	this.getContext = function() {
 		return context;
