@@ -121,19 +121,26 @@
 
 	var ShapeCommands = exports.ShapeCommands = this.Core.CommandMap.extend({
 		events: {
-			'selectShape': 'selectShape'
+			'shape:select': 'selectShapes'
 		},
 
-		selectShape: function(shape) {
-			var currentUser = context.workspace.get('users').filter(function(user) {
-				return user.get('id') === context.currentUserId;
-			})[0];
+		selectShapes: function(event) {
+			var currentUser = context.metadata.getUser(context.currentUserId),
+				currentSelection = context.metadata.getSelectionsByUser(context.currentUserId),
+				newSelections = event.shapes.map(function(shape) {
+					return new App.Models.Selection({
+						userId: context.currentUserId,
+						selectedId: shape.get('id')
+					});
+				});
 
-			console.log('Select shape by ' + currentUser.toJSON());
+			context.metadata.get('selections').remove(currentSelection);
+			context.metadata.get('selections').add(newSelections);
 		}
 	});
 
-	new ShapeCommands(dispatcher);
+	//No telling when the GC might try to reclaim these if they aren't attached to something
+	this.Commands.ShapeInstance = new ShapeCommands(dispatcher);
 	this.Commands.WorkspaceInstance = new WorkspaceCommands(dispatcher);
 
 }).call(App, async, Backbone);
