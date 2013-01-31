@@ -8,8 +8,11 @@ $(function() {
 	var doc = context.workspace;
 
 	var workspaceView = new App.Views.WorkspaceView({model: doc}, {width: 960, height: 500});
-	dispatcher.trigger('workspace:load', 'testWorkspace');
 
+	dispatcher.on('workspace:loaded', function() {
+		workspaceView.render();
+	});
+	dispatcher.trigger('workspace:load', {name: 'testWorkspace'});
 
 	var keyState = {};
 
