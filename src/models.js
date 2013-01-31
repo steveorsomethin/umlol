@@ -182,7 +182,7 @@
 		},
 
 		getColorsForSelected: function(selectedId) {
-			return this.getUsersBySelected.map(function(user) {
+			return this.getUsersBySelected(selectedId).map(function(user) {
 				return user.get('color');
 			});
 		}
