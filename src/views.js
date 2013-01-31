@@ -9,12 +9,22 @@
 	};
 
 	var WorkspaceView = exports.WorkspaceView = Backbone.View.extend({
+		events: {
+			'mousedown': 'onMouseDown'
+		},
+
 		initialize: function() {
 			var svg = d3.select('body').append('svg')
 				.attr('width', this.options.width)
 				.attr('height', this.options.height);
 
 			this.setElement(svg.node());
+
+			var drag = d3.behavior.drag()
+				.on('drag', this.onDrag.bind(this))
+				.on('dragend', this.onDragEnd.bind(this));
+
+			d3.select(this.el).call(drag);
 
 			this.bindModelEvents();
 			this.render();
@@ -32,6 +42,32 @@
 
 			this.listenTo(this.model.get('shapes'), 'add', this.shapeAdded.bind(this));
 			this.listenTo(this.model.get('lines'), 'add', this.lineAdded.bind(this));
+		},
+
+		onMouseDown: function(event) {
+			var x = event.offsetX,
+				y = event.offsetY;
+
+			this.selector = {
+				info: {x: x, y: y, width: 0, height: 0},
+				rect: d3.select(this.el).append('rect')
+						.attr('class', 'selector')
+						.attr('transform', ['translate(', x, ' ', y, ')'].join(''))
+			};
+		},
+
+		onDrag: function() {
+			this.selector.info.width += d3.event.dx;
+			this.selector.info.height += d3.event.dy;
+			this.selector.rect
+				.attr('width', this.selector.info.width)
+				.attr('height', this.selector.info.height);
+		},
+
+		onDragEnd: function() {
+			this.selector.rect.remove();
+			dispatcher.trigger('workspace:select', this.selector.info);
+			this.selector = null;
 		},
 
 		shapeAdded: function(model) {
