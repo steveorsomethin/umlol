@@ -104,7 +104,7 @@
 				.on('drag', this.onDrag.bind(this))
 				.on('dragend', this.onDragEnd.bind(this));
 
-			d3.select(this.el).attr('class', 'shape').call(drag);
+			d3.select(this.el).call(drag);
 
 			this.strokeColors = [];
 			this.bindModelEvents();
