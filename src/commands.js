@@ -67,12 +67,14 @@
 
 	var WorkspaceCommands = exports.WorkspaceCommands = this.Core.CommandMap.extend({
 		events: {
-			'workspace:load': 'loadWorkspace'
+			'workspace:load': 'loadWorkspace',
+			'workspace:select': 'selectItems'
 		},
 
-		loadWorkspace: function(name) {
+		loadWorkspace: function(event) {
 			var workspace = context.workspace,
-				metadata = context.metadata;
+				metadata = context.metadata,
+				name = event.name;
 
 			workspace.documentName = name;
 			metadata.documentName = name + ':metadata';
@@ -116,6 +118,16 @@
 					dispatcher.trigger('workspace:loaded', {workspace: workspace, metadata: metadata});
 				}
 			);
+		},
+
+		selectItems: function(event) {
+			var selected = context.workspace.get('shapes').filter(function(shape) {
+				var x = shape.get('x'), y = shape.get('y');
+
+				return x > event.x && x < event.x + event.width && y > event.y && y < event.y + event.height;
+			});
+
+			dispatcher.trigger('shape:select', {shapes: selected});
 		}
 	});
 
