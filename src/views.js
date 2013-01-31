@@ -106,7 +106,7 @@
 
 			d3.select(this.el).call(drag);
 
-			this.strokeColors = [];
+			this.strokeColors = context.metadata.getColorsForSelected(this.model.get('id'));
 			this.bindModelEvents();
 			this.render();
 		},
